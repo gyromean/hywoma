@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
-use std::process::{Command, exit};
+use std::process::exit;
 use std::sync::mpsc;
 use std::thread;
 use std::{env, fs};
@@ -65,17 +65,16 @@ fn hywoma_process_command(command: Vec<String>, tx: &mpsc::Sender<Message>) -> R
 }
 
 fn main_loop(rx: mpsc::Receiver<Message>) -> Result<()> {
-    let mut active_workspace = get_active_workspace()?;
     let monitor_ids = get_monitor_ids()?;
-    eprintln!("monitor_ids = {:?}", (monitor_ids));
-    eprintln!("active_workspace = {:?}", (active_workspace));
+    let mut active_workspace = get_active_workspace()?;
+    println!("Sorted monitor ids: {monitor_ids:?}");
+    println!("Initial workspace: {active_workspace:?}");
     for msg in rx {
-        eprintln!("msg = {:?}", (msg));
+        println!("Msg: {msg:?}");
         match msg {
             Message::ActiveWorkspaceChangedID(new_id) => {
                 active_workspace = Workspace::from_id(new_id);
-                eprintln!("active_workspace = {:?}", (active_workspace));
-                print_time();
+                println!("Workspace update: {active_workspace:?}");
             }
             Message::SelectWorkspace(workspace) => {
                 active_workspace.workspace = workspace;
@@ -102,12 +101,6 @@ fn main_loop(rx: mpsc::Receiver<Message>) -> Result<()> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-fn print_time() {
-    // FIXME: tohle pak smazat
-    let now = chrono::Local::now();
-    println!("{}", now.format("%Y-%m-%d %H:%M:%S%.3f"));
-}
 
 // returns monitor ids sorted by their x position
 fn get_monitor_ids() -> Result<Vec<u64>> {
@@ -183,15 +176,14 @@ fn hywoma_socket_reader(tx: mpsc::Sender<Message>) -> Result<()> {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                println!("New connection");
                 let mut reader = BufReader::new(stream);
                 let mut buf = Vec::<u8>::new();
                 reader.read_to_end(&mut buf)?;
                 let command: Vec<String> = bincode::deserialize(&buf)?;
+                println!("Received command: {command:?}");
                 hywoma_process_command(command, &tx)?;
-                println!("Closed connection");
             }
-            Err(err) => {
+            Err(_err) => {
                 break;
             }
         }
@@ -256,7 +248,6 @@ fn server() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    print_time();
     let args: Vec<String> = env::args().skip(1).collect();
     if args.len() < 1 {
         eprintln!("Requires argument");
