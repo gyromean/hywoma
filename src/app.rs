@@ -111,10 +111,13 @@ pub fn send_command(command: &Vec<String>) -> Result<()> {
     stream.write_all(&serialized)?;
     stream.flush()?;
 
+    println!("Sent command to server: {command:?}");
+
     Ok(())
 }
 
 pub fn server() -> Result<()> {
+    println!("Server started");
     let (tx, rx) = mpsc::channel::<Message>();
 
     thread::spawn({
